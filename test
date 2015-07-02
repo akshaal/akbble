@@ -1,0 +1,3 @@
+#!/bin/sh
+
+pebble build && pebble kill && pebble install --emulator basalt
