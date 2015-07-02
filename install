@@ -1,0 +1,3 @@
+#!/bin/sh
+
+pebble build && cp build/akbble.pbw /home/akshaal/Dropbox/Family-shared/pebble/ && dropbox start
