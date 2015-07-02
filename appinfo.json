@@ -2,15 +2,14 @@
   "uuid": "cd371539-c682-4055-b27e-662c56b159e3",
   "shortName": "akbble",
   "longName": "akbble",
-  "companyName": "MakeAwesomeHappen",
+  "companyName": "akshaal",
   "versionLabel": "1.0",
   "sdkVersion": "3",
-  "targetPlatforms": ["aplite", "basalt"],
+  "targetPlatforms": ["basalt"],
   "watchapp": {
-    "watchface": false
+    "watchface": true
   },
   "appKeys": {
-    "dummy": 0
   },
   "resources": {
     "media": []
