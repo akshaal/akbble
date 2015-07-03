@@ -30,6 +30,8 @@ static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
 static TextLayer *s_time_details_layer;
 static TextLayer *s_day_layer;
+static Layer *s_battery_layer;
+static BatteryChargeState s_battery_state;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -55,6 +57,23 @@ static void display_time(struct tm *tick_time) {
 
 static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     display_time(tick_time);
+}
+
+static void battery_handler(BatteryChargeState new_state) {
+    s_battery_state = new_state;
+    layer_mark_dirty(s_battery_layer);
+}
+
+static void paint_battery_layer(Layer *layer, GContext *ctx) {
+    int x = (s_battery_state.charge_percent * 144) / 100;
+    GPoint p0 = GPoint(0, 0);
+    GPoint p1 = GPoint(x, 0);
+    GPoint p2 = GPoint(144, 0);
+    graphics_context_set_stroke_color(ctx, GColorCyan);
+    graphics_context_set_stroke_width(ctx, 4);
+    graphics_draw_line(ctx, p0, p1);
+    graphics_context_set_stroke_color(ctx, GColorRed);
+    graphics_draw_line(ctx, p1, p2);
 }
 
 static void window_load(Window *window) {
@@ -89,6 +108,11 @@ static void window_load(Window *window) {
     text_layer_set_text_alignment(s_day_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_day_layer));
 
+    // Create battery layer
+    s_battery_layer = layer_create(GRect(0, 67, 144, 4));
+    layer_set_update_proc(s_battery_layer, paint_battery_layer);
+    layer_add_child(window_get_root_layer(window), s_battery_layer);
+
     // Display current time
     time_t now = time(NULL);
     struct tm *tick_time = localtime(&now);
@@ -96,11 +120,18 @@ static void window_load(Window *window) {
 
     // Subscribe to time updates
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
+
+    // Subscribe to the Battery State Service
+    battery_state_service_subscribe(battery_handler);
+
+    // Get the current battery level
+    battery_handler(battery_state_service_peek());
 }
 
 static void window_unload(Window *window) {
-    // Stop timer
+    // Unsubscribe
     tick_timer_service_unsubscribe();
+    battery_state_service_unsubscribe();
 
     // Destroy bitmaps
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -116,6 +147,7 @@ static void window_unload(Window *window) {
 
     text_layer_destroy(s_time_details_layer);
     text_layer_destroy(s_day_layer);
+    layer_destroy(s_battery_layer);
 }
 
 static void init(void) {
