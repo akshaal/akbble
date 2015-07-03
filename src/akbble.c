@@ -76,10 +76,10 @@ static void paint_battery_layer(Layer *layer, GContext *ctx) {
     GPoint p0 = GPoint(0, 0);
     GPoint p1 = GPoint(x, 0);
     GPoint p2 = GPoint(144, 0);
-    graphics_context_set_stroke_color(ctx, GColorCyan);
+    graphics_context_set_stroke_color(ctx, (s_battery_state.charge_percent < 15) ? GColorRed : GColorCyan);
     graphics_context_set_stroke_width(ctx, 6);
     graphics_draw_line(ctx, p0, p1);
-    graphics_context_set_stroke_color(ctx, GColorRed);
+    graphics_context_set_stroke_color(ctx, GColorBlack);
     graphics_draw_line(ctx, p1, p2);
 }
 
