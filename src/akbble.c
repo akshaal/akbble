@@ -39,7 +39,7 @@ static Layer *s_battery_layer = NULL;
 static Layer *s_bt_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
-static int s_temp = 23;
+static int s_temp = 99;
 static time_t s_last_temp_update_secs = 0;
 
 // ------------------------------------------------------
@@ -119,7 +119,7 @@ static void update_temp() {
     if (s_temp_layer != NULL) {
         snprintf(buf, sizeof(buf), "%d", abs(s_temp));
         text_layer_set_text(s_temp_layer, buf);
-        text_layer_set_background_color(s_temp_layer, (s_temp >= 0) ? GColorImperialPurple : GColorOxfordBlue);
+        text_layer_set_background_color(s_temp_layer, (s_temp >= 0) ? GColorBulgarianRose : GColorOxfordBlue);
     }
 }
 
@@ -210,7 +210,6 @@ static void window_load(Window *window) {
 
     // Display some temp
     update_temp();
-    text_layer_set_text(s_temp_layer, "1");
 
     // Subscribe to time updates
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
