@@ -84,7 +84,7 @@ static void paint_battery_layer(Layer *layer, GContext *ctx) {
 }
 
 static void paint_bt_layer(Layer *layer, GContext *ctx) {
-    if (s_bt_connected) {
+    if (!s_bt_connected) {
         graphics_context_set_stroke_color(ctx, GColorRed);
         graphics_context_set_stroke_width(ctx, 4);
         graphics_draw_line(ctx, GPoint(0, 0), GPoint(144, 0));
