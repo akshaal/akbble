@@ -115,9 +115,12 @@ static void paint_bt_layer(Layer *layer, GContext *ctx) {
 
 static void update_temp() {
     static char buf[4];
-    snprintf(buf, sizeof(buf), "%d", abs(s_temp));
-    text_layer_set_text(s_temp_layer, buf);
-    text_layer_set_text_color(s_temp_layer, (s_temp >= 0) ? GColorRed : GColorBlue);
+
+    if (s_temp_layer != NULL) {
+        snprintf(buf, sizeof(buf), "%d", abs(s_temp));
+        text_layer_set_text(s_temp_layer, buf);
+        text_layer_set_background_color(s_temp_layer, (s_temp >= 0) ? GColorImperialPurple : GColorOxfordBlue);
+    }
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
@@ -185,7 +188,7 @@ static void window_load(Window *window) {
 
     // Create temp details TextLayer
     s_temp_layer = text_layer_create(GRect(0, 135, 40, 33));
-    text_layer_set_background_color(s_temp_layer, GColorBlack);
+    text_layer_set_text_color(s_temp_layer, GColorWhite);
     text_layer_set_font(s_temp_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
     text_layer_set_text_alignment(s_temp_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer));
