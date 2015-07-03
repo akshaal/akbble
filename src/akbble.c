@@ -3,6 +3,10 @@
 #define TOTAL_IMAGE_SLOTS 3
 #define NUMBER_OF_IMAGES 12
 
+enum {
+    KEY_TEMPERATURE = 0
+};
+
 static Window *s_window;
 
 static const char *day_names[] = {
@@ -28,12 +32,15 @@ static const int IMAGE_RESOURCE_B_IDS[NUMBER_OF_IMAGES] = {
 static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
-static TextLayer *s_time_details_layer;
-static TextLayer *s_day_layer;
-static Layer *s_battery_layer;
-static Layer *s_bt_layer;
+static TextLayer *s_time_details_layer = NULL;
+static TextLayer *s_day_layer = NULL;
+static TextLayer *s_temp_layer = NULL;
+static Layer *s_battery_layer = NULL;
+static Layer *s_bt_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
+static int s_temp = 23;
+static time_t s_last_temp_update_secs = 0;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -59,6 +66,18 @@ static void display_time(struct tm *tick_time) {
 
 static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     display_time(tick_time);
+
+    time_t cur_time = time(NULL);
+
+    if (cur_time - s_last_temp_update_secs > 30*60) {
+        // Send a message to android pebble app
+        s_last_temp_update_secs = cur_time;
+
+        DictionaryIterator *iter;
+        app_message_outbox_begin(&iter);
+        dict_write_uint8(iter, 0, 0);
+        app_message_outbox_send();
+    }
 }
 
 static void battery_handler(BatteryChargeState new_state) {
@@ -94,6 +113,44 @@ static void paint_bt_layer(Layer *layer, GContext *ctx) {
     }
 }
 
+static void update_temp() {
+    static char buf[4];
+    snprintf(buf, sizeof(buf), "%d", abs(s_temp));
+    text_layer_set_text(s_temp_layer, buf);
+    text_layer_set_text_color(s_temp_layer, (s_temp >= 0) ? GColorRed : GColorBlue);
+}
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+    // Read first item
+    Tuple *t = dict_read_first(iterator);
+
+    // For all items
+    while(t != NULL) {
+        // Which key was received?
+        switch(t->key) {
+            case KEY_TEMPERATURE:
+                s_temp = (int)t->value->int32;
+                update_temp();
+                break;
+
+            default:
+                break;
+        }
+
+        // Look for next item
+        t = dict_read_next(iterator);
+    }
+}
+
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+}
+
+static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
+}
+
+static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+}
+
 static void window_load(Window *window) {
     window_set_background_color(window, GColorBlack);
 
@@ -126,12 +183,19 @@ static void window_load(Window *window) {
     text_layer_set_text_alignment(s_day_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_day_layer));
 
-    // Create battery layer
+    // Create temp details TextLayer
+    s_temp_layer = text_layer_create(GRect(0, 135, 40, 33));
+    text_layer_set_background_color(s_temp_layer, GColorBlack);
+    text_layer_set_font(s_temp_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+    text_layer_set_text_alignment(s_temp_layer, GTextAlignmentCenter);
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer));
+
+    // Create battery layer THIS SHOULD BE BEFORE OTHER TEXTS
     s_battery_layer = layer_create(GRect(0, 67, 144, 4));
     layer_set_update_proc(s_battery_layer, paint_battery_layer);
     layer_add_child(window_get_root_layer(window), s_battery_layer);
 
-    // Create bt layer
+    // Create bt layer: THIS SHOULD BE THE LAST LAYER
     s_bt_layer = layer_create(GRect(0, 0, 144, 168));
     layer_set_update_proc(s_bt_layer, paint_bt_layer);
     layer_add_child(window_get_root_layer(window), s_bt_layer);
@@ -140,6 +204,10 @@ static void window_load(Window *window) {
     time_t now = time(NULL);
     struct tm *tick_time = localtime(&now);
     display_time(tick_time);
+
+    // Display some temp
+    update_temp();
+    text_layer_set_text(s_temp_layer, "1");
 
     // Subscribe to time updates
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
@@ -177,11 +245,16 @@ static void window_unload(Window *window) {
 
     text_layer_destroy(s_time_details_layer);
     text_layer_destroy(s_day_layer);
+    text_layer_destroy(s_temp_layer);
     layer_destroy(s_battery_layer);
     layer_destroy(s_bt_layer);
+
+    s_temp_layer = NULL;
 }
 
 static void init(void) {
+    s_last_temp_update_secs = time(NULL);
+
     // Create main Window element and assign to pointer
     s_window = window_create();
 
@@ -193,6 +266,14 @@ static void init(void) {
 
     // Show the Window on the watch, with animated=true
     window_stack_push(s_window, true);
+
+    app_message_register_inbox_received(inbox_received_callback);
+    app_message_register_inbox_dropped(inbox_dropped_callback);
+    app_message_register_outbox_failed(outbox_failed_callback);
+    app_message_register_outbox_sent(outbox_sent_callback);
+
+    // Open AppMessage
+    app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 }
 
 static void deinit(void) {

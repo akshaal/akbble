@@ -1,161 +1,165 @@
 {
-  "uuid": "cd371539-c682-4055-b27e-662c56b159e3",
-  "shortName": "akbble",
-  "longName": "akbble",
-  "companyName": "akshaal",
-  "versionLabel": "1.0",
-  "sdkVersion": "3",
-  "targetPlatforms": ["basalt"],
-  "watchapp": {
-    "watchface": true
-  },
-  "appKeys": {
-  },
-  "resources": {
-    "media": [
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_0_d",
-            "file": "images/num_0_d.png"
-        },
+    "uuid": "cd371539-c682-4055-b27e-662c56b159e3",
+    "shortName": "akbble",
+    "longName": "akbble",
+    "companyName": "akshaal",
+    "versionLabel": "1.0",
+    "sdkVersion": "3",
+    "targetPlatforms": ["basalt"],
+    "watchapp": {
+        "watchface": true
+    },
+    "appKeys": {
+        "KEY_TEMPERATURE": 0
+    },
+    "capabilities": [
+        "location"
+    ],
+    "resources": {
+        "media": [
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_0_d",
+                "file": "images/num_0_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_1_d",
-            "file": "images/num_1_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_1_d",
+                "file": "images/num_1_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_2_d",
-            "file": "images/num_2_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_2_d",
+                "file": "images/num_2_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_3_d",
-            "file": "images/num_3_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_3_d",
+                "file": "images/num_3_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_4_d",
-            "file": "images/num_4_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_4_d",
+                "file": "images/num_4_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_5_d",
-            "file": "images/num_5_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_5_d",
+                "file": "images/num_5_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_6_d",
-            "file": "images/num_6_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_6_d",
+                "file": "images/num_6_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_7_d",
-            "file": "images/num_7_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_7_d",
+                "file": "images/num_7_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_8_d",
-            "file": "images/num_8_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_8_d",
+                "file": "images/num_8_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_9_d",
-            "file": "images/num_9_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_9_d",
+                "file": "images/num_9_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_10_d",
-            "file": "images/num_10_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_10_d",
+                "file": "images/num_10_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_11_d",
-            "file": "images/num_11_d.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_11_d",
+                "file": "images/num_11_d.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_0_b",
-            "file": "images/num_0_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_0_b",
+                "file": "images/num_0_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_1_b",
-            "file": "images/num_1_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_1_b",
+                "file": "images/num_1_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_2_b",
-            "file": "images/num_2_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_2_b",
+                "file": "images/num_2_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_3_b",
-            "file": "images/num_3_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_3_b",
+                "file": "images/num_3_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_4_b",
-            "file": "images/num_4_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_4_b",
+                "file": "images/num_4_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_5_b",
-            "file": "images/num_5_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_5_b",
+                "file": "images/num_5_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_6_b",
-            "file": "images/num_6_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_6_b",
+                "file": "images/num_6_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_7_b",
-            "file": "images/num_7_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_7_b",
+                "file": "images/num_7_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_8_b",
-            "file": "images/num_8_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_8_b",
+                "file": "images/num_8_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_9_b",
-            "file": "images/num_9_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_9_b",
+                "file": "images/num_9_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_10_b",
-            "file": "images/num_10_b.png"
-        },
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_10_b",
+                "file": "images/num_10_b.png"
+            },
 
-        {
-            "type": "png",
-            "name": "IMAGE_NUM_11_b",
-            "file": "images/num_11_b.png"
-        }
-    ]
-  }
+            {
+                "type": "png",
+                "name": "IMAGE_NUM_11_b",
+                "file": "images/num_11_b.png"
+            }
+        ]
+    }
 }
