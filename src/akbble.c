@@ -31,7 +31,9 @@ static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
 static TextLayer *s_time_details_layer;
 static TextLayer *s_day_layer;
 static Layer *s_battery_layer;
+static Layer *s_bt_layer;
 static BatteryChargeState s_battery_state;
+static bool s_bt_connected;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -64,16 +66,32 @@ static void battery_handler(BatteryChargeState new_state) {
     layer_mark_dirty(s_battery_layer);
 }
 
+static void bt_handler(bool connected) {
+    s_bt_connected = connected;
+    layer_mark_dirty(window_get_root_layer(s_window));
+}
+
 static void paint_battery_layer(Layer *layer, GContext *ctx) {
     int x = (s_battery_state.charge_percent * 144) / 100;
     GPoint p0 = GPoint(0, 0);
     GPoint p1 = GPoint(x, 0);
     GPoint p2 = GPoint(144, 0);
     graphics_context_set_stroke_color(ctx, GColorCyan);
-    graphics_context_set_stroke_width(ctx, 4);
+    graphics_context_set_stroke_width(ctx, 6);
     graphics_draw_line(ctx, p0, p1);
     graphics_context_set_stroke_color(ctx, GColorRed);
     graphics_draw_line(ctx, p1, p2);
+}
+
+static void paint_bt_layer(Layer *layer, GContext *ctx) {
+    if (s_bt_connected) {
+        graphics_context_set_stroke_color(ctx, GColorRed);
+        graphics_context_set_stroke_width(ctx, 4);
+        graphics_draw_line(ctx, GPoint(0, 0), GPoint(144, 0));
+        graphics_draw_line(ctx, GPoint(143, 0), GPoint(143, 168));
+        graphics_draw_line(ctx, GPoint(143, 167), GPoint(0, 167));
+        graphics_draw_line(ctx, GPoint(0, 167), GPoint(0, 0));
+    }
 }
 
 static void window_load(Window *window) {
@@ -113,6 +131,11 @@ static void window_load(Window *window) {
     layer_set_update_proc(s_battery_layer, paint_battery_layer);
     layer_add_child(window_get_root_layer(window), s_battery_layer);
 
+    // Create bt layer
+    s_bt_layer = layer_create(GRect(0, 0, 144, 168));
+    layer_set_update_proc(s_bt_layer, paint_bt_layer);
+    layer_add_child(window_get_root_layer(window), s_bt_layer);
+
     // Display current time
     time_t now = time(NULL);
     struct tm *tick_time = localtime(&now);
@@ -126,12 +149,19 @@ static void window_load(Window *window) {
 
     // Get the current battery level
     battery_handler(battery_state_service_peek());
+
+    // Subscribe to Bluetooth updates
+    bluetooth_connection_service_subscribe(bt_handler);
+
+    // Show current connection state
+    bt_handler(bluetooth_connection_service_peek());
 }
 
 static void window_unload(Window *window) {
     // Unsubscribe
     tick_timer_service_unsubscribe();
     battery_state_service_unsubscribe();
+    bluetooth_connection_service_unsubscribe();
 
     // Destroy bitmaps
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -148,6 +178,7 @@ static void window_unload(Window *window) {
     text_layer_destroy(s_time_details_layer);
     text_layer_destroy(s_day_layer);
     layer_destroy(s_battery_layer);
+    layer_destroy(s_bt_layer);
 }
 
 static void init(void) {
