@@ -230,6 +230,8 @@ static void window_load(Window *window) {
     text_layer_set_text_alignment(s_temp_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer));
 
+    update_weather_icon();
+
     // Create battery layer THIS SHOULD BE BEFORE OTHER TEXTS
     s_battery_layer = layer_create(GRect(0, 67, 144, 4));
     layer_set_update_proc(s_battery_layer, paint_battery_layer);
@@ -247,7 +249,6 @@ static void window_load(Window *window) {
 
     // Display some temp
     update_temp();
-    update_weather_icon();
 
     // Subscribe to time updates
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
