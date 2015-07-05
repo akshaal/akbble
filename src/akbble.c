@@ -2,9 +2,18 @@
 
 #define TOTAL_IMAGE_SLOTS 3
 #define NUMBER_OF_IMAGES 12
+#define NUMBER_OF_WEATHER_ICONS 4
 
 enum {
-    KEY_TEMPERATURE = 0
+    KEY_TEMPERATURE = 0,
+    KEY_WEATHER_ICON = 1
+};
+
+static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
+    RESOURCE_ID_IMAGE_SUN, //0
+    RESOURCE_ID_IMAGE_CLOUD, //1
+    RESOURCE_ID_IMAGE_RAIN, //2
+    RESOURCE_ID_IMAGE_SNOW //3
 };
 
 static Window *s_window;
@@ -31,6 +40,7 @@ static const int IMAGE_RESOURCE_B_IDS[NUMBER_OF_IMAGES] = {
 
 static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
+static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
 static TextLayer *s_time_details_layer = NULL;
 static TextLayer *s_day_layer = NULL;
@@ -163,6 +173,10 @@ static void window_load(Window *window) {
         s_b_images[i] = gbitmap_create_with_resource(IMAGE_RESOURCE_B_IDS[i]);
     }
 
+    for (uint i = 0; i < NUMBER_OF_WEATHER_ICONS; i++) {
+        s_weather_images[i] = gbitmap_create_with_resource(WEATHER_ICONS[i]);
+    }
+
     Layer *window_layer = window_get_root_layer(window);
     for (int i = 0; i < TOTAL_IMAGE_SLOTS; i++) {
         BitmapLayer *bitmap_layer = bitmap_layer_create(GRect(i * 48, 0, 48, 67));
@@ -237,6 +251,10 @@ static void window_unload(Window *window) {
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
         gbitmap_destroy(s_d_images[i]);
         gbitmap_destroy(s_b_images[i]);
+    }
+
+    for (uint i = 0; i < NUMBER_OF_WEATHER_ICONS; i++) {
+        gbitmap_destroy(s_weather_images[i]);
     }
 
     // Destroy layers

@@ -7,6 +7,18 @@ var xhrRequest = function (url, type, callback) {
     xhr.send();
 };
 
+function iconFromWeatherId(weatherId) {
+    if (weatherId < 600) {
+        return 2;
+    } else if (weatherId < 700) {
+        return 3;
+    } else if (weatherId > 800) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 function locationSuccess(pos) {
     // Construct URL
     var url = "http://api.openweathermap.org/data/2.5/weather?lat=" +
@@ -20,10 +32,12 @@ function locationSuccess(pos) {
 
                    // Temperature in Kelvin requires adjustment
                    var temperature = Math.round(json.main.temp - 273.15);
+                   var icon = iconFromWeatherId(json.weather[0].id);
 
                    // Assemble dictionary using our keys
                    var dictionary = {
-                       "KEY_TEMPERATURE": temperature
+                       "KEY_TEMPERATURE": temperature,
+                       "KEY_WEATHER_ICON": icon
                    };
 
                    // Send to Pebble
