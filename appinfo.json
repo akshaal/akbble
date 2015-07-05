@@ -38,6 +38,11 @@
                 "name": "IMAGE_SNOW",
                 "file": "images/snow.png"
             },
+            {
+                "type": "png",
+                "name": "IMAGE_NOWEATHER",
+                "file": "images/noweather.png"
+            },
 
             {
                 "type": "png",

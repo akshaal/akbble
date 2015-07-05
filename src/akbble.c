@@ -2,7 +2,7 @@
 
 #define TOTAL_IMAGE_SLOTS 3
 #define NUMBER_OF_IMAGES 12
-#define NUMBER_OF_WEATHER_ICONS 4
+#define NUMBER_OF_WEATHER_ICONS 5
 
 enum {
     KEY_TEMPERATURE = 0,
@@ -13,7 +13,8 @@ static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
     RESOURCE_ID_IMAGE_SUN, //0
     RESOURCE_ID_IMAGE_CLOUD, //1
     RESOURCE_ID_IMAGE_RAIN, //2
-    RESOURCE_ID_IMAGE_SNOW //3
+    RESOURCE_ID_IMAGE_SNOW, //3
+    RESOURCE_ID_IMAGE_NOWEATHER //4
 };
 
 static Window *s_window;
@@ -42,6 +43,7 @@ static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
+static BitmapLayer *s_weather_layer = NULL;
 static TextLayer *s_time_details_layer = NULL;
 static TextLayer *s_day_layer = NULL;
 static TextLayer *s_temp_layer = NULL;
@@ -50,6 +52,7 @@ static Layer *s_bt_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
 static int s_temp = 99;
+static int s_weather_icon = RESOURCE_ID_IMAGE_NOWEATHER;
 static time_t s_last_temp_update_secs = 0;
 
 // ------------------------------------------------------
@@ -133,6 +136,21 @@ static void update_temp() {
     }
 }
 
+static void update_weather_icon() {
+    if (s_weather_layer == NULL) {
+        s_weather_layer = bitmap_layer_create(GRect(144-33, 135, 33, 33));
+        layer_add_child(window_get_root_layer(s_window), bitmap_layer_get_layer(s_weather_layer));
+    }
+
+    if (s_weather_icon < 0 || s_weather_icon >= NUMBER_OF_WEATHER_ICONS) {
+        s_weather_icon = RESOURCE_ID_IMAGE_NOWEATHER;
+    }
+
+    if (s_weather_layer != NULL) {
+        bitmap_layer_set_bitmap(s_weather_layer, s_weather_images[s_weather_icon]);
+    }
+}
+
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
     // Read first item
     Tuple *t = dict_read_first(iterator);
@@ -144,6 +162,11 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
             case KEY_TEMPERATURE:
                 s_temp = (int)t->value->int32;
                 update_temp();
+                break;
+
+            case KEY_WEATHER_ICON:
+                s_weather_icon = (int)t->value->int32;
+                update_weather_icon();
                 break;
 
             default:
@@ -224,6 +247,7 @@ static void window_load(Window *window) {
 
     // Display some temp
     update_temp();
+    update_weather_icon();
 
     // Subscribe to time updates
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
@@ -268,6 +292,11 @@ static void window_unload(Window *window) {
     text_layer_destroy(s_temp_layer);
     layer_destroy(s_battery_layer);
     layer_destroy(s_bt_layer);
+
+    if (s_weather_layer != NULL) {
+        bitmap_layer_destroy(s_weather_layer);
+        s_weather_layer = NULL;
+    }
 
     s_temp_layer = NULL;
 }
