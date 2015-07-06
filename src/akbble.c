@@ -10,11 +10,11 @@ enum {
 };
 
 static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
-    RESOURCE_ID_IMAGE_SUN, //0
-    RESOURCE_ID_IMAGE_CLOUD, //1
-    RESOURCE_ID_IMAGE_RAIN, //2
-    RESOURCE_ID_IMAGE_SNOW, //3
-    RESOURCE_ID_IMAGE_NOWEATHER //4
+    RESOURCE_ID_IMAGE_SUN, // 0
+    RESOURCE_ID_IMAGE_CLOUD, // 1
+    RESOURCE_ID_IMAGE_RAIN, // 2
+    RESOURCE_ID_IMAGE_SNOW, // 3
+    RESOURCE_ID_IMAGE_NOWEATHER // 4
 };
 
 static Window *s_window;
@@ -52,7 +52,7 @@ static Layer *s_bt_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
 static int s_temp = 99;
-static int s_weather_icon = RESOURCE_ID_IMAGE_NOWEATHER;
+static int s_weather_icon = 4;
 static time_t s_last_temp_update_secs = 0;
 
 // ------------------------------------------------------
@@ -137,13 +137,8 @@ static void update_temp() {
 }
 
 static void update_weather_icon() {
-    if (s_weather_layer == NULL) {
-        s_weather_layer = bitmap_layer_create(GRect(144-33, 135, 33, 33));
-        layer_add_child(window_get_root_layer(s_window), bitmap_layer_get_layer(s_weather_layer));
-    }
-
     if (s_weather_icon < 0 || s_weather_icon >= NUMBER_OF_WEATHER_ICONS) {
-        s_weather_icon = RESOURCE_ID_IMAGE_NOWEATHER;
+        s_weather_icon = 4;
     }
 
     if (s_weather_layer != NULL) {
@@ -230,7 +225,9 @@ static void window_load(Window *window) {
     text_layer_set_text_alignment(s_temp_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer));
 
-    update_weather_icon();
+    // Create weather icon layer
+    s_weather_layer = bitmap_layer_create(GRect(144-33, 135, 33, 33));
+    layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(s_weather_layer));
 
     // Create battery layer THIS SHOULD BE BEFORE OTHER TEXTS
     s_battery_layer = layer_create(GRect(0, 67, 144, 4));
@@ -249,6 +246,7 @@ static void window_load(Window *window) {
 
     // Display some temp
     update_temp();
+    update_weather_icon();
 
     // Subscribe to time updates
     tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
@@ -293,12 +291,9 @@ static void window_unload(Window *window) {
     text_layer_destroy(s_temp_layer);
     layer_destroy(s_battery_layer);
     layer_destroy(s_bt_layer);
+    bitmap_layer_destroy(s_weather_layer);
 
-    if (s_weather_layer != NULL) {
-        bitmap_layer_destroy(s_weather_layer);
-        s_weather_layer = NULL;
-    }
-
+    s_weather_layer = NULL;
     s_temp_layer = NULL;
 }
 
