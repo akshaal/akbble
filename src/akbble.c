@@ -6,7 +6,8 @@
 
 enum {
     KEY_TEMPERATURE = 0,
-    KEY_WEATHER_ICON = 1
+    KEY_WEATHER_ICON = 1,
+    KEY_ALARM_STR = 2
 };
 
 static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
@@ -162,6 +163,11 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
             case KEY_WEATHER_ICON:
                 s_weather_icon = (int)t->value->int32;
                 update_weather_icon();
+                break;
+
+            case KEY_ALARM_STR:
+                s_weather_icon = 10; // TODO!!!!!!
+                update_weather_icon(); // TODO!!!!!!
                 break;
 
             default:
