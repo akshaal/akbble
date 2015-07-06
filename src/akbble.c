@@ -50,6 +50,7 @@ static TextLayer *s_day_layer = NULL;
 static TextLayer *s_temp_layer = NULL;
 static Layer *s_battery_layer = NULL;
 static Layer *s_bt_layer = NULL;
+static TextLayer *s_alarm_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
 static int s_temp = 99;
@@ -147,6 +148,12 @@ static void update_weather_icon() {
     }
 }
 
+static void update_alarm(char *str) {
+    if (s_temp_layer != NULL) {
+        text_layer_set_text(s_alarm_layer, str);
+    }
+}
+
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
     // Read first item
     Tuple *t = dict_read_first(iterator);
@@ -166,8 +173,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 break;
 
             case KEY_ALARM_STR:
-                s_weather_icon = 10; // TODO!!!!!!
-                update_weather_icon(); // TODO!!!!!!
+                update_alarm(t->value->cstring);
                 break;
 
             default:
@@ -232,10 +238,18 @@ static void window_load(Window *window) {
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer));
 
     // Create weather icon layer
-    s_weather_layer = bitmap_layer_create(GRect(144-33, 135, 33, 33));
+    s_weather_layer = bitmap_layer_create(GRect(40, 135, 33, 33));
     layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(s_weather_layer));
 
-    // Create battery layer THIS SHOULD BE BEFORE OTHER TEXTS
+    // Create alarm details TextLayer
+    s_alarm_layer = text_layer_create(GRect(73, 135, 144-73, 33));
+    text_layer_set_background_color(s_alarm_layer, GColorBlack);
+    text_layer_set_text_color(s_alarm_layer, GColorWhite);
+    text_layer_set_font(s_alarm_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+    text_layer_set_text_alignment(s_alarm_layer, GTextAlignmentCenter);
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_alarm_layer));
+
+    // Create battery layer THIS SHOULD BE AFTER OTHER TEXTS
     s_battery_layer = layer_create(GRect(0, 67, 144, 4));
     layer_set_update_proc(s_battery_layer, paint_battery_layer);
     layer_add_child(window_get_root_layer(window), s_battery_layer);
@@ -294,6 +308,7 @@ static void window_unload(Window *window) {
 
     text_layer_destroy(s_time_details_layer);
     text_layer_destroy(s_day_layer);
+    text_layer_destroy(s_alarm_layer);
     text_layer_destroy(s_temp_layer);
     layer_destroy(s_battery_layer);
     layer_destroy(s_bt_layer);
