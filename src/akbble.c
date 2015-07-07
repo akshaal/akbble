@@ -7,7 +7,8 @@
 enum {
     KEY_TEMPERATURE = 0,
     KEY_WEATHER_ICON = 1,
-    KEY_ALARM_STR = 2
+    KEY_ALARM_STR = 2,
+    KEY_ALARM_TIME = 3
 };
 
 static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
@@ -56,6 +57,7 @@ static bool s_bt_connected;
 static int s_temp = 99;
 static int s_weather_icon = 4;
 static time_t s_last_temp_update_secs = 0;
+static time_t s_alarm_secs = 0;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -148,9 +150,28 @@ static void update_weather_icon() {
     }
 }
 
-static void update_alarm(char *str) {
+static void update_alarm(char *str, bool inv) {
     if (s_temp_layer != NULL) {
+        text_layer_set_background_color(s_alarm_layer, inv ? GColorWhite : GColorBlack);
+        text_layer_set_text_color(s_alarm_layer, inv ? GColorBlack : GColorWhite);
         text_layer_set_text(s_alarm_layer, str);
+    }
+}
+
+static void update_alarm_time() {
+    static char buf[5];
+
+    if (s_alarm_secs == 0) {
+        update_alarm("", false);
+    } else {
+        tm *tm = localtime(&s_alarm_secs);
+        int rh = tm->tm_hour;
+        int h = rh % 12;
+        int m = tm->tm_min;
+        bool inv = rh >= 12;
+        char hc = h == 10 ? 'a' : (h == 11 ? 'b' : (h + '0'));
+        snprintf(buf, sizeof(buf), "%c%02u", hc, m);
+        update_alarm(buf, inv);
     }
 }
 
@@ -173,7 +194,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 break;
 
             case KEY_ALARM_STR:
-                update_alarm(t->value->cstring);
+                update_alarm(t->value->cstring, false);
+                break;
+
+            case KEY_ALARM_TIME:
+                s_alarm_secs = ((long)((int)t->value->int32)) * 60L;
+                update_alarm_time();
                 break;
 
             default:
@@ -243,8 +269,6 @@ static void window_load(Window *window) {
 
     // Create alarm details TextLayer
     s_alarm_layer = text_layer_create(GRect(73, 135, 144-73, 33));
-    text_layer_set_background_color(s_alarm_layer, GColorBlack);
-    text_layer_set_text_color(s_alarm_layer, GColorWhite);
     text_layer_set_font(s_alarm_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
     text_layer_set_text_alignment(s_alarm_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_alarm_layer));
@@ -265,6 +289,7 @@ static void window_load(Window *window) {
     display_time(tick_time);
 
     // Display some temp
+    update_alarm("", false);
     update_temp();
     update_weather_icon();
 

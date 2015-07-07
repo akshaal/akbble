@@ -12,7 +12,8 @@
     "appKeys": {
         "KEY_TEMPERATURE": 0,
         "KEY_WEATHER_ICON": 1,
-        "KEY_ALARM_STR": 2
+        "KEY_ALARM_STR": 2,
+        "KEY_ALARM_TIME": 3
     },
     "capabilities": [
         "location"
