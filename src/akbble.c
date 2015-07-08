@@ -4,11 +4,16 @@
 #define NUMBER_OF_IMAGES 12
 #define NUMBER_OF_WEATHER_ICONS 5
 
+#define MASK_WATCHFACE_REQUEST_ALARM 1
+#define MASK_WATCHFACE_REQUEST_TEMP 2
+#define MASK_WATCHFACE_REQUEST_ALL (MASK_WATCHFACE_REQUEST_TEMP | MASK_WATCHFACE_REQUEST_ALARM)
+
 enum {
-    KEY_TEMPERATURE = 0,
+    KEY_WATCHFACE_REQUEST = 0,
     KEY_WEATHER_ICON = 1,
     KEY_ALARM_STR = 2,
-    KEY_ALARM_TIME = 3
+    KEY_ALARM_TIME = 3,
+    KEY_TEMPERATURE = 4
 };
 
 static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
@@ -81,6 +86,13 @@ static void display_time(struct tm *tick_time) {
     text_layer_set_text(s_day_layer, day_text);
 }
 
+static void send_watchface_request(int request_mask) {
+    DictionaryIterator *iter;
+    app_message_outbox_begin(&iter);
+    dict_write_uint8(iter, KEY_WATCHFACE_REQUEST, request_mask);
+    app_message_outbox_send();
+}
+
 static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     display_time(tick_time);
 
@@ -89,11 +101,7 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     if (cur_time - s_last_temp_update_secs > 30*60) {
         // Send a message to android pebble app
         s_last_temp_update_secs = cur_time;
-
-        DictionaryIterator *iter;
-        app_message_outbox_begin(&iter);
-        dict_write_uint8(iter, 0, 0);
-        app_message_outbox_send();
+        send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
     }
 }
 
@@ -365,6 +373,9 @@ static void init(void) {
 
     // Open AppMessage
     app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+
+    // Initial request
+    send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
 }
 
 static void deinit(void) {
