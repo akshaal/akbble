@@ -75,6 +75,7 @@ static bool s_bt_connected;
 static int s_temp = 99;
 static int s_weather_icon = 4;
 static time_t s_last_temp_update_secs = 0;
+static time_t s_last_anim_secs = 0;
 static time_t s_alarm_secs = 0;
 static bool s_animation_running = false;
 
@@ -231,8 +232,6 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
 static void my_animation_started(Animation *animation, void *context) {
-    s_animation_running = true;
-
     int anim_img_y = 0;
     int anim_scr_y = (SCR_HEIGHT - INGRESS_HEIGHT) / 2;
 
@@ -286,6 +285,14 @@ static void my_animation_stopped(Animation *animation, bool finished, void *cont
 }
 
 static void start_animation() {
+    time_t cur_time = time(NULL);
+    if (cur_time - s_last_anim_secs < 20) {
+        return;
+    }
+
+    s_last_anim_secs = cur_time;
+    s_animation_running = true;
+
     // Animation itself
     Animation *animation = animation_create();
     animation_set_duration(animation, ANIM_DURATION);
