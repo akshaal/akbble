@@ -189,6 +189,12 @@
                 "type": "png",
                 "name": "IMAGE_NUM_11_b",
                 "file": "images/num_11_b.png"
+            },
+
+            {
+                "type": "png",
+                "name": "IMAGE_INGRESS",
+                "file": "images/ingress.png"
             }
         ]
     }

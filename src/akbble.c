@@ -4,6 +4,16 @@
 #define NUMBER_OF_IMAGES 12
 #define NUMBER_OF_WEATHER_ICONS 5
 
+#define SCR_WIDTH 144
+#define SCR_HEIGHT 168
+
+#define INGRESS_WIDTH 144
+#define INGRESS_HEIGHT 144
+
+#define ANIM_DURATION 2000
+#define ANIM_DELAY 1000
+#define ANIM_HEIGHT 25
+
 #define MASK_WATCHFACE_REQUEST_ALARM 1
 #define MASK_WATCHFACE_REQUEST_TEMP 2
 #define MASK_WATCHFACE_REQUEST_ALL (MASK_WATCHFACE_REQUEST_TEMP | MASK_WATCHFACE_REQUEST_ALARM)
@@ -49,6 +59,8 @@ static const int IMAGE_RESOURCE_B_IDS[NUMBER_OF_IMAGES] = {
 static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
+static GBitmap *s_ingress_image = NULL;
+static GBitmap *s_ingress_slice_image = NULL;
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
 static BitmapLayer *s_weather_layer = NULL;
 static TextLayer *s_time_details_layer = NULL;
@@ -56,6 +68,7 @@ static TextLayer *s_day_layer = NULL;
 static TextLayer *s_temp_layer = NULL;
 static Layer *s_battery_layer = NULL;
 static Layer *s_bt_layer = NULL;
+static BitmapLayer *s_ingress_layer = NULL;
 static TextLayer *s_alarm_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
@@ -63,6 +76,7 @@ static int s_temp = 99;
 static int s_weather_icon = 4;
 static time_t s_last_temp_update_secs = 0;
 static time_t s_alarm_secs = 0;
+static bool s_animation_running = false;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -91,18 +105,6 @@ static void send_watchface_request(int request_mask) {
     app_message_outbox_begin(&iter);
     dict_write_uint8(iter, KEY_WATCHFACE_REQUEST, request_mask);
     app_message_outbox_send();
-}
-
-static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
-    display_time(tick_time);
-
-    time_t cur_time = time(NULL);
-
-    if (cur_time - s_last_temp_update_secs > 30*60) {
-        // Send a message to android pebble app
-        s_last_temp_update_secs = cur_time;
-        send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
-    }
 }
 
 static void battery_handler(BatteryChargeState new_state) {
@@ -228,8 +230,102 @@ static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResul
 static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
+static void my_animation_started(Animation *animation, void *context) {
+    s_animation_running = true;
+
+    int anim_img_y = 0;
+    int anim_scr_y = (SCR_HEIGHT - INGRESS_HEIGHT) / 2;
+
+    // Prepare initial layers and stuff
+    if (s_ingress_layer) {
+        bitmap_layer_destroy(s_ingress_layer);
+        s_ingress_layer = NULL;
+    }
+
+    s_ingress_layer = bitmap_layer_create(GRect(0, anim_scr_y, SCR_WIDTH, ANIM_HEIGHT));
+    bitmap_layer_set_compositing_mode(s_ingress_layer, GCompOpSet);
+    layer_add_child(window_get_root_layer(s_window), bitmap_layer_get_layer(s_ingress_layer));
+
+    if (s_ingress_slice_image) {
+        gbitmap_destroy(s_ingress_slice_image);
+        s_ingress_slice_image = NULL;
+    }
+
+    s_ingress_slice_image = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y, INGRESS_WIDTH, ANIM_HEIGHT));
+
+    bitmap_layer_set_bitmap(s_ingress_layer, s_ingress_slice_image);
+}
+
+static void my_animation_update(Animation *animation, AnimationProgress progress) {
+    int anim_img_y = progress / (ANIMATION_NORMALIZED_MAX / (INGRESS_HEIGHT - ANIM_HEIGHT));
+    int anim_scr_y = (SCR_HEIGHT - INGRESS_HEIGHT) / 2 + anim_img_y;
+
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Loop index now p=%d, imgy=%d, scry=%d", (int)progress, anim_img_y, anim_scr_y);
+
+    if (s_ingress_slice_image) {
+        gbitmap_destroy(s_ingress_slice_image);
+        s_ingress_slice_image = NULL;
+    }
+
+    s_ingress_slice_image = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y, INGRESS_WIDTH, ANIM_HEIGHT));
+
+    layer_set_frame(bitmap_layer_get_layer(s_ingress_layer), GRect(0, anim_scr_y, SCR_WIDTH, ANIM_HEIGHT));
+
+    bitmap_layer_set_bitmap(s_ingress_layer, s_ingress_slice_image);
+    layer_mark_dirty(window_get_root_layer(s_window));
+}
+
+static void my_animation_stopped(Animation *animation, bool finished, void *context) {
+    s_animation_running = false;
+
+    if (s_ingress_layer) {
+        bitmap_layer_destroy(s_ingress_layer);
+        s_ingress_layer = NULL;
+    }
+    animation_destroy(animation);
+}
+
+static void start_animation() {
+    // Animation itself
+    Animation *animation = animation_create();
+    animation_set_duration(animation, ANIM_DURATION);
+    animation_set_delay(animation, ANIM_DELAY);
+    animation_set_curve(animation, AnimationCurveEaseInOut);
+
+    static AnimationImplementation anim_impl = {
+        .update = my_animation_update
+    };
+
+    animation_set_implementation(animation, &anim_impl);
+    animation_set_handlers(animation, (AnimationHandlers) {
+        .started = my_animation_started,
+        .stopped = my_animation_stopped,
+    }, NULL);
+
+    // Start it
+    animation_schedule(animation);
+}
+
+static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
+    display_time(tick_time);
+
+    time_t cur_time = time(NULL);
+
+    if (cur_time - s_last_temp_update_secs > 30*60) {
+        // Send a message to android pebble app
+        s_last_temp_update_secs = cur_time;
+        send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
+    }
+
+    if (tick_time->tm_min % 5 == 0 && !s_animation_running) {
+        start_animation();
+    }
+}
+
 static void window_load(Window *window) {
     window_set_background_color(window, GColorBlack);
+
+    s_ingress_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
 
     // 48x67
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -315,6 +411,9 @@ static void window_load(Window *window) {
 
     // Show current connection state
     bt_handler(bluetooth_connection_service_peek());
+
+    // Animate everything
+    start_animation();
 }
 
 static void window_unload(Window *window) {
@@ -333,6 +432,16 @@ static void window_unload(Window *window) {
         gbitmap_destroy(s_weather_images[i]);
     }
 
+    if (s_ingress_slice_image) {
+        gbitmap_destroy(s_ingress_slice_image);
+        s_ingress_slice_image = NULL;
+    }
+
+    if (s_ingress_image) {
+        gbitmap_destroy(s_ingress_image);
+        s_ingress_image = NULL;
+    }
+
     // Destroy layers
     for (int i = 0; i < TOTAL_IMAGE_SLOTS; i++) {
         layer_remove_from_parent(bitmap_layer_get_layer(s_image_layers[i]));
@@ -346,6 +455,11 @@ static void window_unload(Window *window) {
     layer_destroy(s_battery_layer);
     layer_destroy(s_bt_layer);
     bitmap_layer_destroy(s_weather_layer);
+
+    if (s_ingress_layer) {
+        bitmap_layer_destroy(s_ingress_layer);
+        s_ingress_layer = NULL;
+    }
 
     s_weather_layer = NULL;
     s_temp_layer = NULL;
