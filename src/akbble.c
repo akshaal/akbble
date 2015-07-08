@@ -7,9 +7,6 @@
 #define SCR_WIDTH 144
 #define SCR_HEIGHT 168
 
-#define INGRESS_WIDTH 144
-#define INGRESS_HEIGHT 168
-
 #define ANIM_DURATION 2000
 #define ANIM_DELAY 1000
 #define ANIM_HEIGHT 25
@@ -59,7 +56,9 @@ static const int IMAGE_RESOURCE_B_IDS[NUMBER_OF_IMAGES] = {
 static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
+static GBitmap *s_anim_image = NULL;
 static GBitmap *s_ingress_image = NULL;
+static GBitmap *s_resist_image = NULL;
 static GBitmap *s_ingress_slice_image1 = NULL;
 static GBitmap *s_ingress_slice_image2 = NULL;
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
@@ -237,7 +236,7 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 static void my_animation_started(Animation *animation, void *context) {
     if (s_animation_mode & 1) {
         int anim_img_y1 = 0;
-        int anim_scr_y1 = (SCR_HEIGHT - INGRESS_HEIGHT) / 2;
+        int anim_scr_y1 = 0;
 
         // Prepare initial layers and stuff
         if (s_ingress_layer1) {
@@ -258,14 +257,14 @@ static void my_animation_started(Animation *animation, void *context) {
             s_ingress_slice_image1 = NULL;
         }
 
-        s_ingress_slice_image1 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y1, INGRESS_WIDTH, ANIM_HEIGHT));
+        s_ingress_slice_image1 = gbitmap_create_as_sub_bitmap(s_anim_image, GRect(0, anim_img_y1, SCR_WIDTH, ANIM_HEIGHT));
 
         bitmap_layer_set_bitmap(s_ingress_layer1, s_ingress_slice_image1);
     }
 
     if (s_animation_mode & 2) {
-        int anim_img_y2 = INGRESS_HEIGHT - ANIM_HEIGHT;
-        int anim_scr_y2 = SCR_HEIGHT - (SCR_HEIGHT - INGRESS_HEIGHT) / 2 - ANIM_HEIGHT;
+        int anim_img_y2 = SCR_HEIGHT - ANIM_HEIGHT;
+        int anim_scr_y2 = SCR_HEIGHT - ANIM_HEIGHT;
 
         s_ingress_layer2 = bitmap_layer_create(GRect(0, anim_scr_y2, SCR_WIDTH, ANIM_HEIGHT));
         bitmap_layer_set_compositing_mode(s_ingress_layer2, GCompOpSet);
@@ -276,7 +275,7 @@ static void my_animation_started(Animation *animation, void *context) {
             s_ingress_slice_image2 = NULL;
         }
 
-        s_ingress_slice_image2 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y2, INGRESS_WIDTH, ANIM_HEIGHT));
+        s_ingress_slice_image2 = gbitmap_create_as_sub_bitmap(s_anim_image, GRect(0, anim_img_y2, SCR_WIDTH, ANIM_HEIGHT));
 
         bitmap_layer_set_bitmap(s_ingress_layer2, s_ingress_slice_image2);
     }
@@ -284,8 +283,8 @@ static void my_animation_started(Animation *animation, void *context) {
 
 static void my_animation_update(Animation *animation, AnimationProgress progress) {
     if (s_animation_mode & 1) {
-        int anim_img_y1 = INGRESS_HEIGHT - ANIM_HEIGHT - progress / (ANIMATION_NORMALIZED_MAX / (INGRESS_HEIGHT - ANIM_HEIGHT));
-        int anim_scr_y1 = (SCR_HEIGHT - INGRESS_HEIGHT) / 2 + anim_img_y1;
+        int anim_img_y1 = SCR_HEIGHT - ANIM_HEIGHT - progress / (ANIMATION_NORMALIZED_MAX / (SCR_HEIGHT - ANIM_HEIGHT));
+        int anim_scr_y1 = anim_img_y1;
 
         //APP_LOG(APP_LOG_LEVEL_DEBUG, "Loop index now p=%d, imgy=%d, scry=%d", (int)progress, anim_img_y, anim_scr_y);
 
@@ -294,7 +293,7 @@ static void my_animation_update(Animation *animation, AnimationProgress progress
             s_ingress_slice_image1 = NULL;
         }
 
-        s_ingress_slice_image1 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y1, INGRESS_WIDTH, ANIM_HEIGHT));
+        s_ingress_slice_image1 = gbitmap_create_as_sub_bitmap(s_anim_image, GRect(0, anim_img_y1, SCR_WIDTH, ANIM_HEIGHT));
 
         layer_set_frame(bitmap_layer_get_layer(s_ingress_layer1), GRect(0, anim_scr_y1, SCR_WIDTH, ANIM_HEIGHT));
 
@@ -302,8 +301,8 @@ static void my_animation_update(Animation *animation, AnimationProgress progress
     }
 
     if (s_animation_mode & 2) {
-        int anim_img_y2 = progress / (ANIMATION_NORMALIZED_MAX / (INGRESS_HEIGHT - ANIM_HEIGHT));
-        int anim_scr_y2 = (SCR_HEIGHT - INGRESS_HEIGHT) / 2 + anim_img_y2;
+        int anim_img_y2 = progress / (ANIMATION_NORMALIZED_MAX / (SCR_HEIGHT - ANIM_HEIGHT));
+        int anim_scr_y2 = anim_img_y2;
 
         //APP_LOG(APP_LOG_LEVEL_DEBUG, "Loop index now p=%d, imgy=%d, scry=%d", (int)progress, anim_img_y, anim_scr_y);
 
@@ -312,7 +311,7 @@ static void my_animation_update(Animation *animation, AnimationProgress progress
             s_ingress_slice_image2 = NULL;
         }
 
-        s_ingress_slice_image2 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y2, INGRESS_WIDTH, ANIM_HEIGHT));
+        s_ingress_slice_image2 = gbitmap_create_as_sub_bitmap(s_anim_image, GRect(0, anim_img_y2, SCR_WIDTH, ANIM_HEIGHT));
 
         layer_set_frame(bitmap_layer_get_layer(s_ingress_layer2), GRect(0, anim_scr_y2, SCR_WIDTH, ANIM_HEIGHT));
 
@@ -346,6 +345,7 @@ static void start_animation() {
     s_last_anim_secs = cur_time;
     s_animation_running = true;
     s_animation_mode = rand() % 3 + 1;
+    s_anim_image = rand() % 2 == 0 ? s_resist_image : s_ingress_image;
 
     // Animation itself
     Animation *animation = animation_create();
@@ -388,6 +388,7 @@ static void window_load(Window *window) {
     window_set_background_color(window, GColorBlack);
 
     s_ingress_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
+    s_resist_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_RESIST);
 
     // 48x67
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -508,6 +509,11 @@ static void window_unload(Window *window) {
     if (s_ingress_image) {
         gbitmap_destroy(s_ingress_image);
         s_ingress_image = NULL;
+    }
+
+    if (s_resist_image) {
+        gbitmap_destroy(s_resist_image);
+        s_resist_image = NULL;
     }
 
     // Destroy layers

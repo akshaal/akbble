@@ -195,6 +195,12 @@
                 "type": "png",
                 "name": "IMAGE_INGRESS",
                 "file": "images/ingress.png"
+            },
+
+            {
+                "type": "png",
+                "name": "IMAGE_RESIST",
+                "file": "images/resist.png"
             }
         ]
     }
