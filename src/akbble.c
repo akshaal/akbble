@@ -8,7 +8,7 @@
 #define SCR_HEIGHT 168
 
 #define INGRESS_WIDTH 144
-#define INGRESS_HEIGHT 144
+#define INGRESS_HEIGHT 168
 
 #define ANIM_DURATION 2000
 #define ANIM_DELAY 1000
@@ -60,7 +60,8 @@ static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
 static GBitmap *s_ingress_image = NULL;
-static GBitmap *s_ingress_slice_image = NULL;
+static GBitmap *s_ingress_slice_image1 = NULL;
+static GBitmap *s_ingress_slice_image2 = NULL;
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
 static BitmapLayer *s_weather_layer = NULL;
 static TextLayer *s_time_details_layer = NULL;
@@ -68,7 +69,8 @@ static TextLayer *s_day_layer = NULL;
 static TextLayer *s_temp_layer = NULL;
 static Layer *s_battery_layer = NULL;
 static Layer *s_bt_layer = NULL;
-static BitmapLayer *s_ingress_layer = NULL;
+static BitmapLayer *s_ingress_layer1 = NULL;
+static BitmapLayer *s_ingress_layer2 = NULL;
 static TextLayer *s_alarm_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
@@ -78,6 +80,7 @@ static time_t s_last_temp_update_secs = 0;
 static time_t s_last_anim_secs = 0;
 static time_t s_alarm_secs = 0;
 static bool s_animation_running = false;
+static int s_animation_mode;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -232,54 +235,104 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
 static void my_animation_started(Animation *animation, void *context) {
-    int anim_img_y = 0;
-    int anim_scr_y = (SCR_HEIGHT - INGRESS_HEIGHT) / 2;
+    if (s_animation_mode & 1) {
+        int anim_img_y1 = 0;
+        int anim_scr_y1 = (SCR_HEIGHT - INGRESS_HEIGHT) / 2;
 
-    // Prepare initial layers and stuff
-    if (s_ingress_layer) {
-        bitmap_layer_destroy(s_ingress_layer);
-        s_ingress_layer = NULL;
+        // Prepare initial layers and stuff
+        if (s_ingress_layer1) {
+            bitmap_layer_destroy(s_ingress_layer1);
+            s_ingress_layer1 = NULL;
+        }
+        if (s_ingress_layer2) {
+            bitmap_layer_destroy(s_ingress_layer2);
+            s_ingress_layer2 = NULL;
+        }
+
+        s_ingress_layer1 = bitmap_layer_create(GRect(0, anim_scr_y1, SCR_WIDTH, ANIM_HEIGHT));
+        bitmap_layer_set_compositing_mode(s_ingress_layer1, GCompOpSet);
+        layer_add_child(window_get_root_layer(s_window), bitmap_layer_get_layer(s_ingress_layer1));
+
+        if (s_ingress_slice_image1) {
+            gbitmap_destroy(s_ingress_slice_image1);
+            s_ingress_slice_image1 = NULL;
+        }
+
+        s_ingress_slice_image1 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y1, INGRESS_WIDTH, ANIM_HEIGHT));
+
+        bitmap_layer_set_bitmap(s_ingress_layer1, s_ingress_slice_image1);
     }
 
-    s_ingress_layer = bitmap_layer_create(GRect(0, anim_scr_y, SCR_WIDTH, ANIM_HEIGHT));
-    bitmap_layer_set_compositing_mode(s_ingress_layer, GCompOpSet);
-    layer_add_child(window_get_root_layer(s_window), bitmap_layer_get_layer(s_ingress_layer));
+    if (s_animation_mode & 2) {
+        int anim_img_y2 = INGRESS_HEIGHT - ANIM_HEIGHT;
+        int anim_scr_y2 = SCR_HEIGHT - (SCR_HEIGHT - INGRESS_HEIGHT) / 2 - ANIM_HEIGHT;
 
-    if (s_ingress_slice_image) {
-        gbitmap_destroy(s_ingress_slice_image);
-        s_ingress_slice_image = NULL;
+        s_ingress_layer2 = bitmap_layer_create(GRect(0, anim_scr_y2, SCR_WIDTH, ANIM_HEIGHT));
+        bitmap_layer_set_compositing_mode(s_ingress_layer2, GCompOpSet);
+        layer_add_child(window_get_root_layer(s_window), bitmap_layer_get_layer(s_ingress_layer2));
+
+        if (s_ingress_slice_image2) {
+            gbitmap_destroy(s_ingress_slice_image2);
+            s_ingress_slice_image2 = NULL;
+        }
+
+        s_ingress_slice_image2 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y2, INGRESS_WIDTH, ANIM_HEIGHT));
+
+        bitmap_layer_set_bitmap(s_ingress_layer2, s_ingress_slice_image2);
     }
-
-    s_ingress_slice_image = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y, INGRESS_WIDTH, ANIM_HEIGHT));
-
-    bitmap_layer_set_bitmap(s_ingress_layer, s_ingress_slice_image);
 }
 
 static void my_animation_update(Animation *animation, AnimationProgress progress) {
-    int anim_img_y = progress / (ANIMATION_NORMALIZED_MAX / (INGRESS_HEIGHT - ANIM_HEIGHT));
-    int anim_scr_y = (SCR_HEIGHT - INGRESS_HEIGHT) / 2 + anim_img_y;
+    if (s_animation_mode & 1) {
+        int anim_img_y1 = INGRESS_HEIGHT - ANIM_HEIGHT - progress / (ANIMATION_NORMALIZED_MAX / (INGRESS_HEIGHT - ANIM_HEIGHT));
+        int anim_scr_y1 = (SCR_HEIGHT - INGRESS_HEIGHT) / 2 + anim_img_y1;
 
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Loop index now p=%d, imgy=%d, scry=%d", (int)progress, anim_img_y, anim_scr_y);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Loop index now p=%d, imgy=%d, scry=%d", (int)progress, anim_img_y, anim_scr_y);
 
-    if (s_ingress_slice_image) {
-        gbitmap_destroy(s_ingress_slice_image);
-        s_ingress_slice_image = NULL;
+        if (s_ingress_slice_image1) {
+            gbitmap_destroy(s_ingress_slice_image1);
+            s_ingress_slice_image1 = NULL;
+        }
+
+        s_ingress_slice_image1 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y1, INGRESS_WIDTH, ANIM_HEIGHT));
+
+        layer_set_frame(bitmap_layer_get_layer(s_ingress_layer1), GRect(0, anim_scr_y1, SCR_WIDTH, ANIM_HEIGHT));
+
+        bitmap_layer_set_bitmap(s_ingress_layer1, s_ingress_slice_image1);
     }
 
-    s_ingress_slice_image = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y, INGRESS_WIDTH, ANIM_HEIGHT));
+    if (s_animation_mode & 2) {
+        int anim_img_y2 = progress / (ANIMATION_NORMALIZED_MAX / (INGRESS_HEIGHT - ANIM_HEIGHT));
+        int anim_scr_y2 = (SCR_HEIGHT - INGRESS_HEIGHT) / 2 + anim_img_y2;
 
-    layer_set_frame(bitmap_layer_get_layer(s_ingress_layer), GRect(0, anim_scr_y, SCR_WIDTH, ANIM_HEIGHT));
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Loop index now p=%d, imgy=%d, scry=%d", (int)progress, anim_img_y, anim_scr_y);
 
-    bitmap_layer_set_bitmap(s_ingress_layer, s_ingress_slice_image);
+        if (s_ingress_slice_image2) {
+            gbitmap_destroy(s_ingress_slice_image2);
+            s_ingress_slice_image2 = NULL;
+        }
+
+        s_ingress_slice_image2 = gbitmap_create_as_sub_bitmap(s_ingress_image, GRect(0, anim_img_y2, INGRESS_WIDTH, ANIM_HEIGHT));
+
+        layer_set_frame(bitmap_layer_get_layer(s_ingress_layer2), GRect(0, anim_scr_y2, SCR_WIDTH, ANIM_HEIGHT));
+
+        bitmap_layer_set_bitmap(s_ingress_layer2, s_ingress_slice_image2);
+    }
+
     layer_mark_dirty(window_get_root_layer(s_window));
 }
 
 static void my_animation_stopped(Animation *animation, bool finished, void *context) {
     s_animation_running = false;
 
-    if (s_ingress_layer) {
-        bitmap_layer_destroy(s_ingress_layer);
-        s_ingress_layer = NULL;
+    if (s_ingress_layer1) {
+        bitmap_layer_destroy(s_ingress_layer1);
+        s_ingress_layer1 = NULL;
+    }
+
+    if (s_ingress_layer2) {
+        bitmap_layer_destroy(s_ingress_layer2);
+        s_ingress_layer2 = NULL;
     }
     animation_destroy(animation);
 }
@@ -292,12 +345,14 @@ static void start_animation() {
 
     s_last_anim_secs = cur_time;
     s_animation_running = true;
+    s_animation_mode = rand() % 3 + 1;
 
     // Animation itself
     Animation *animation = animation_create();
     animation_set_duration(animation, ANIM_DURATION);
     animation_set_delay(animation, ANIM_DELAY);
     animation_set_curve(animation, AnimationCurveEaseInOut);
+    animation_set_reverse(animation, true);
 
     static AnimationImplementation anim_impl = {
         .update = my_animation_update
@@ -324,7 +379,7 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
         send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
     }
 
-    if (tick_time->tm_min % 5 == 0 && !s_animation_running) {
+    if (rand() % 10 == 0) {
         start_animation();
     }
 }
@@ -420,7 +475,9 @@ static void window_load(Window *window) {
     bt_handler(bluetooth_connection_service_peek());
 
     // Animate everything
-    start_animation();
+    if (rand() % 4 == 0) {
+        start_animation();
+    }
 }
 
 static void window_unload(Window *window) {
@@ -439,9 +496,13 @@ static void window_unload(Window *window) {
         gbitmap_destroy(s_weather_images[i]);
     }
 
-    if (s_ingress_slice_image) {
-        gbitmap_destroy(s_ingress_slice_image);
-        s_ingress_slice_image = NULL;
+    if (s_ingress_slice_image1) {
+        gbitmap_destroy(s_ingress_slice_image1);
+        s_ingress_slice_image1 = NULL;
+    }
+    if (s_ingress_slice_image2) {
+        gbitmap_destroy(s_ingress_slice_image2);
+        s_ingress_slice_image2 = NULL;
     }
 
     if (s_ingress_image) {
@@ -463,9 +524,13 @@ static void window_unload(Window *window) {
     layer_destroy(s_bt_layer);
     bitmap_layer_destroy(s_weather_layer);
 
-    if (s_ingress_layer) {
-        bitmap_layer_destroy(s_ingress_layer);
-        s_ingress_layer = NULL;
+    if (s_ingress_layer1) {
+        bitmap_layer_destroy(s_ingress_layer1);
+        s_ingress_layer1 = NULL;
+    }
+    if (s_ingress_layer2) {
+        bitmap_layer_destroy(s_ingress_layer2);
+        s_ingress_layer2 = NULL;
     }
 
     s_weather_layer = NULL;
