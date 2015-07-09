@@ -388,7 +388,7 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
         send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
     }
 
-    if (rand() % 10 == 0) {
+    if (rand() % 5 == 0) {
         start_animation();
     }
 
@@ -489,7 +489,7 @@ static void window_load(Window *window) {
     bt_handler(bluetooth_connection_service_peek());
 
     // Animate everything
-    if (rand() % 4 == 0) {
+    if (rand() % 3 == 0) {
         start_animation();
     }
 }
