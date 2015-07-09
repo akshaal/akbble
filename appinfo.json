@@ -201,6 +201,12 @@
                 "type": "png",
                 "name": "IMAGE_RESIST",
                 "file": "images/resist.png"
+            },
+
+            {
+                "type": "png",
+                "name": "IMAGE_NOISE",
+                "file": "images/noise.png"
             }
         ]
     }

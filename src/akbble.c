@@ -59,6 +59,7 @@ static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
 static GBitmap *s_anim_image = NULL;
 static GBitmap *s_ingress_image = NULL;
 static GBitmap *s_resist_image = NULL;
+static GBitmap *s_noise_image = NULL;
 static GBitmap *s_ingress_slice_image1 = NULL;
 static GBitmap *s_ingress_slice_image2 = NULL;
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
@@ -354,7 +355,9 @@ static void start_animation() {
     s_last_anim_secs = cur_time;
     s_animation_running = true;
     s_animation_mode = rand() % 3 + 1;
-    s_anim_image = rand() % 2 == 0 ? s_resist_image : s_ingress_image;
+
+    int imgi = rand() % 3;
+    s_anim_image = imgi == 0 ? s_resist_image : (imgi == 1 ? s_ingress_image : s_noise_image);
 
     // Animation itself
     Animation *animation = animation_create();
@@ -402,6 +405,7 @@ static void window_load(Window *window) {
 
     s_ingress_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
     s_resist_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_RESIST);
+    s_noise_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NOISE);
 
     // 48x67
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -527,6 +531,11 @@ static void window_unload(Window *window) {
     if (s_resist_image) {
         gbitmap_destroy(s_resist_image);
         s_resist_image = NULL;
+    }
+
+    if (s_noise_image) {
+        gbitmap_destroy(s_noise_image);
+        s_noise_image = NULL;
     }
 
     // Destroy layers
