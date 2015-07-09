@@ -80,6 +80,7 @@ static time_t s_last_anim_secs = 0;
 static time_t s_alarm_secs = 0;
 static bool s_animation_running = false;
 static int s_animation_mode;
+static bool s_alarm_faraway = 0;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -174,9 +175,17 @@ static void update_alarm(char *str, bool inv) {
 static void update_alarm_time() {
     static char buf[5];
 
+    time_t cur_time = time(NULL);
+
     if (s_alarm_secs == 0) {
+        s_alarm_faraway = false;
         update_alarm("", false);
+    } else if (s_alarm_secs - cur_time > 24 * 60 * 60) {
+        s_alarm_faraway = true;
+        snprintf(buf, sizeof(buf), ">%ldd", (s_alarm_secs - cur_time) / (24 * 60 * 60));
+        update_alarm(buf, false);
     } else {
+        s_alarm_faraway = false;
         tm *tm = localtime(&s_alarm_secs);
         int rh = tm->tm_hour;
         int h = rh % 12;
@@ -381,6 +390,10 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
 
     if (rand() % 10 == 0) {
         start_animation();
+    }
+
+    if (s_alarm_faraway && s_alarm_secs != 0) {
+        update_alarm_time();
     }
 }
 
