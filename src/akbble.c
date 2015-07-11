@@ -398,6 +398,16 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     if (s_alarm_faraway && s_alarm_secs != 0) {
         update_alarm_time();
     }
+
+    if (!s_bt_connected) {
+        // Vibrate
+        static const uint32_t const segments[] = { 25 };
+        VibePattern pat = {
+            .durations = segments,
+            .num_segments = ARRAY_LENGTH(segments),
+        };
+        vibes_enqueue_custom_pattern(pat);
+    }
 }
 
 static void window_load(Window *window) {
