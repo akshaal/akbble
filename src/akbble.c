@@ -38,7 +38,7 @@ static const char *day_names[] = {
 };
 
 static const char *month_names[] = {
-    "JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"
+    "JA", "FE", "MR", "AP", "MI", "JN", "JL", "AU", "SE", "OK", "NO", "DE"
 };
 
 static const int IMAGE_RESOURCE_D_IDS[NUMBER_OF_IMAGES] = {
