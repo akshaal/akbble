@@ -207,6 +207,13 @@
                 "type": "png",
                 "name": "IMAGE_NOISE",
                 "file": "images/noise.png"
+            },
+
+            {
+                "characterRegex": "[A-Za-z0-9 øåæØÆÅ]",
+                "type": "font",
+                "name": "FONT_34",
+                "file": "fonts/font.ttf"
             }
         ]
     }

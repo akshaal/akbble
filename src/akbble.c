@@ -38,7 +38,7 @@ static const char *day_names[] = {
 };
 
 static const char *month_names[] = {
-    "JA", "FE", "MR", "AP", "MI", "JN", "JL", "AU", "SE", "OK", "NO", "DE"
+    "JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"
 };
 
 static const int IMAGE_RESOURCE_D_IDS[NUMBER_OF_IMAGES] = {
@@ -64,13 +64,17 @@ static GBitmap *s_ingress_slice_image1 = NULL;
 static GBitmap *s_ingress_slice_image2 = NULL;
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
 static BitmapLayer *s_weather_layer = NULL;
+static TextLayer *s_time_details_layer_bg = NULL;
 static TextLayer *s_time_details_layer = NULL;
+static TextLayer *s_day_layer_bg = NULL;
 static TextLayer *s_day_layer = NULL;
+static TextLayer *s_temp_layer_bg = NULL;
 static TextLayer *s_temp_layer = NULL;
 static Layer *s_battery_layer = NULL;
 static Layer *s_bt_layer = NULL;
 static BitmapLayer *s_ingress_layer1 = NULL;
 static BitmapLayer *s_ingress_layer2 = NULL;
+static TextLayer *s_alarm_layer_bg = NULL;
 static TextLayer *s_alarm_layer = NULL;
 static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
@@ -82,6 +86,7 @@ static time_t s_alarm_secs = 0;
 static bool s_animation_running = false;
 static int s_animation_mode;
 static bool s_alarm_faraway = 0;
+static GFont s_font30;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -151,7 +156,7 @@ static void update_temp() {
     if (s_temp_layer != NULL) {
         snprintf(buf, sizeof(buf), "%d", abs(s_temp));
         text_layer_set_text(s_temp_layer, buf);
-        text_layer_set_background_color(s_temp_layer, (s_temp >= 0) ? GColorBulgarianRose : GColorOxfordBlue);
+        text_layer_set_background_color(s_temp_layer_bg, (s_temp >= 0) ? GColorBulgarianRose : GColorOxfordBlue);
     }
 }
 
@@ -166,8 +171,8 @@ static void update_weather_icon() {
 }
 
 static void update_alarm(char *str, bool inv) {
-    if (s_temp_layer != NULL) {
-        text_layer_set_background_color(s_alarm_layer, inv ? GColorWhite : GColorBlack);
+    if (s_alarm_layer != NULL) {
+        text_layer_set_background_color(s_alarm_layer_bg, inv ? GColorWhite : GColorBlack);
         text_layer_set_text_color(s_alarm_layer, inv ? GColorBlack : GColorWhite);
         text_layer_set_text(s_alarm_layer, str);
     }
@@ -413,6 +418,8 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
 static void window_load(Window *window) {
     window_set_background_color(window, GColorBlack);
 
+    s_font30 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_34));
+
     s_ingress_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
     s_resist_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_RESIST);
     s_noise_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NOISE);
@@ -435,25 +442,37 @@ static void window_load(Window *window) {
     }
 
     // Create time details TextLayer
-    s_time_details_layer = text_layer_create(GRect(0, 67, 144, 34));
-    text_layer_set_background_color(s_time_details_layer, GColorImperialPurple);
+    s_time_details_layer_bg = text_layer_create(GRect(0, 67, 144, 34));
+    text_layer_set_background_color(s_time_details_layer_bg, GColorImperialPurple);
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_details_layer_bg));
+
+    s_time_details_layer = text_layer_create(GRect(0, 67-4, 144, 34+2));
+    text_layer_set_background_color(s_time_details_layer, GColorClear);
     text_layer_set_text_color(s_time_details_layer, GColorWhite);
-    text_layer_set_font(s_time_details_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+    text_layer_set_font(s_time_details_layer, s_font30);
     text_layer_set_text_alignment(s_time_details_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_details_layer));
 
     // Create day details TextLayer
-    s_day_layer = text_layer_create(GRect(0, 101, 144, 34));
-    text_layer_set_background_color(s_day_layer, GColorBulgarianRose);
+    s_day_layer_bg = text_layer_create(GRect(0, 101, 144, 34));
+    text_layer_set_background_color(s_day_layer_bg, GColorBulgarianRose);
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_day_layer_bg));
+
+    s_day_layer = text_layer_create(GRect(0, 101-6, 144, 34+2));
+    text_layer_set_background_color(s_day_layer, GColorClear);
     text_layer_set_text_color(s_day_layer, GColorWhite);
-    text_layer_set_font(s_day_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+    text_layer_set_font(s_day_layer, s_font30);
     text_layer_set_text_alignment(s_day_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_day_layer));
 
     // Create temp details TextLayer
-    s_temp_layer = text_layer_create(GRect(0, 135, 40, 33));
+    s_temp_layer_bg = text_layer_create(GRect(0, 135, 40, 33));
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer_bg));
+
+    s_temp_layer = text_layer_create(GRect(0, 135-6, 40, 33+2));
+    text_layer_set_background_color(s_temp_layer, GColorClear);
     text_layer_set_text_color(s_temp_layer, GColorWhite);
-    text_layer_set_font(s_temp_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+    text_layer_set_font(s_temp_layer, s_font30);
     text_layer_set_text_alignment(s_temp_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_temp_layer));
 
@@ -462,8 +481,12 @@ static void window_load(Window *window) {
     layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(s_weather_layer));
 
     // Create alarm details TextLayer
-    s_alarm_layer = text_layer_create(GRect(73, 135, 144-73, 33));
-    text_layer_set_font(s_alarm_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+    s_alarm_layer_bg = text_layer_create(GRect(73, 135, 144-73, 33));
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_alarm_layer_bg));
+
+    s_alarm_layer = text_layer_create(GRect(73, 135-6, 144-73, 33+2));
+    text_layer_set_font(s_alarm_layer, s_font30);
+    text_layer_set_background_color(s_alarm_layer, GColorClear);
     text_layer_set_text_alignment(s_alarm_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_alarm_layer));
 
@@ -555,9 +578,13 @@ static void window_unload(Window *window) {
     }
 
     text_layer_destroy(s_time_details_layer);
+    text_layer_destroy(s_time_details_layer_bg);
     text_layer_destroy(s_day_layer);
+    text_layer_destroy(s_day_layer_bg);
     text_layer_destroy(s_alarm_layer);
+    text_layer_destroy(s_alarm_layer_bg);
     text_layer_destroy(s_temp_layer);
+    text_layer_destroy(s_temp_layer_bg);
     layer_destroy(s_battery_layer);
     layer_destroy(s_bt_layer);
     bitmap_layer_destroy(s_weather_layer);
@@ -566,10 +593,13 @@ static void window_unload(Window *window) {
         bitmap_layer_destroy(s_ingress_layer1);
         s_ingress_layer1 = NULL;
     }
+
     if (s_ingress_layer2) {
         bitmap_layer_destroy(s_ingress_layer2);
         s_ingress_layer2 = NULL;
     }
+
+    fonts_unload_custom_font(s_font30);
 
     s_weather_layer = NULL;
     s_temp_layer = NULL;
