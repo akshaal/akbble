@@ -560,6 +560,12 @@ static void window_load(Window *window) {
     if (rand() % 3 == 0) {
         start_animation();
     }
+
+    // This is important that this stuff is located HERE
+    mq_init(inbox_received_callback);
+
+    // Initial request
+    mq_add(CMD_OUT_GET_DATA, "");
 }
 
 static void window_unload(Window *window) {
@@ -650,11 +656,6 @@ static void init(void) {
 
     // Show the Window on the watch, with animated=true
     window_stack_push(s_window, true);
-
-    mq_init(inbox_received_callback);
-
-    // Initial request
-    mq_add(CMD_OUT_GET_DATA, "");
 }
 
 static void deinit(void) {
