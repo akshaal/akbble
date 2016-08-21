@@ -10,14 +10,8 @@
         "watchface": true
     },
     "appKeys": {
-        "KEY_WATCHFACE_REQUEST": 0,
-        "KEY_WEATHER_ICON": 1,
-        "KEY_ALARM_STR": 2,
-        "KEY_ALARM_TIME": 3,
-        "KEY_TEMPERATURE": 4
     },
     "capabilities": [
-        "location"
     ],
     "resources": {
         "media": [

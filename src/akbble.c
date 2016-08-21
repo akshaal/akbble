@@ -1,4 +1,6 @@
 #include <pebble.h>
+#include "message-queue.h"
+#include "utils.h"
 
 #define TOTAL_IMAGE_SLOTS 3
 #define NUMBER_OF_IMAGES 12
@@ -16,11 +18,14 @@
 #define MASK_WATCHFACE_REQUEST_ALL (MASK_WATCHFACE_REQUEST_TEMP | MASK_WATCHFACE_REQUEST_ALARM)
 
 enum {
-    KEY_WATCHFACE_REQUEST = 0,
-    KEY_WEATHER_ICON = 1,
-    KEY_ALARM_STR = 2,
-    KEY_ALARM_TIME = 3,
-    KEY_TEMPERATURE = 4
+    CMD_OUT_GET_DATA = 20,
+    CMD_IN_GET_DATA_RESPONSE = 21,
+
+    CMD_IN_GET_DATA_RESPONSE_ALARM_TIME = 30,
+    CMD_IN_GET_DATA_RESPONSE_WEATHER_TEMP = 31,
+    CMD_IN_GET_DATA_RESPONSE_WEATHER_COND = 32,
+    CMD_IN_GET_DATA_RESPONSE_WEATHER_HUM = 33,
+    CMD_IN_GET_DATA_RESPONSE_WEATHER_WIND = 34
 };
 
 static const uint32_t WEATHER_ICONS[NUMBER_OF_WEATHER_ICONS] = {
@@ -110,13 +115,6 @@ static void display_time(struct tm *tick_time) {
     text_layer_set_text(s_day_layer, day_text);
 }
 
-static void send_watchface_request(int request_mask) {
-    DictionaryIterator *iter;
-    app_message_outbox_begin(&iter);
-    dict_write_uint8(iter, KEY_WATCHFACE_REQUEST, request_mask);
-    app_message_outbox_send();
-}
-
 static void battery_handler(BatteryChargeState new_state) {
     s_battery_state = new_state;
     layer_mark_dirty(s_battery_layer);
@@ -183,6 +181,10 @@ static void update_alarm_time() {
 
     time_t cur_time = time(NULL);
 
+    if (s_alarm_secs < 0) {
+        s_alarm_secs = 0;
+    }
+
     if (s_alarm_secs == 0) {
         s_alarm_faraway = false;
         update_alarm("", false);
@@ -203,31 +205,44 @@ static void update_alarm_time() {
     }
 }
 
-static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+static void inbox_received_callback(DictionaryIterator *iterator) {
+    uint8_t cmd = 0;
+
+    int8_t msg_weather_temp = 99;
+    int8_t msg_weather_hum = 0;
+    int8_t msg_weather_wind = 99;
+    int8_t msg_weather_icon = 4;
+    int32_t msg_alarm_mins = 0;
+
     // Read first item
     Tuple *t = dict_read_first(iterator);
 
-    // For all items
+    // Gather information from the dictionary
     while(t != NULL) {
         // Which key was received?
         switch(t->key) {
-            case KEY_TEMPERATURE:
-                s_temp = (int)t->value->int32;
-                update_temp();
+            case MSG_KEY_CMD:
+                cmd = t->value->uint8;
                 break;
 
-            case KEY_WEATHER_ICON:
-                s_weather_icon = (int)t->value->int32;
-                update_weather_icon();
+            case CMD_IN_GET_DATA_RESPONSE_ALARM_TIME:
+                msg_alarm_mins = t->value->int32;
                 break;
 
-            case KEY_ALARM_STR:
-                update_alarm(t->value->cstring, false);
+            case CMD_IN_GET_DATA_RESPONSE_WEATHER_TEMP:
+                msg_weather_temp = t->value->int8;
                 break;
 
-            case KEY_ALARM_TIME:
-                s_alarm_secs = ((long)((int)t->value->int32)) * 60L;
-                update_alarm_time();
+            case CMD_IN_GET_DATA_RESPONSE_WEATHER_COND:
+                msg_weather_icon = t->value->int8;
+                break;
+
+            case CMD_IN_GET_DATA_RESPONSE_WEATHER_HUM:
+                //msg_weather_hum = t->value->int8;  TODO!!!!!!!!!!!!!!!!!!!!!!!!!
+                break;
+
+            case CMD_IN_GET_DATA_RESPONSE_WEATHER_WIND:
+                //msg_weather_wind = t->value->int8; TODO!!!!!!!!!!!!!!!!!!!!!!!!!
                 break;
 
             default:
@@ -237,15 +252,31 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         // Look for next item
         t = dict_read_next(iterator);
     }
-}
 
-static void inbox_dropped_callback(AppMessageResult reason, void *context) {
-}
+    if (!cmd) {
+        return; // cmd is missing
+    }
 
-static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
-}
+    // Perform command
+    switch(cmd) {
+        case CMD_IN_GET_DATA_RESPONSE:
+            s_temp = msg_weather_temp;
+            s_weather_icon = msg_weather_icon;
 
-static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+            if (msg_alarm_mins < 0) {
+                msg_alarm_mins = 0;
+            }
+
+            s_alarm_secs = ((long)msg_alarm_mins) * 60L;
+
+            update_temp();
+            update_weather_icon();
+            update_alarm_time();
+            break;
+
+        default:
+            break;
+    }
 }
 
 static void my_animation_started(Animation *animation, void *context) {
@@ -393,7 +424,7 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     if (cur_time - s_last_temp_update_secs > 30*60) {
         // Send a message to android pebble app
         s_last_temp_update_secs = cur_time;
-        send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
+        mq_add(CMD_OUT_GET_DATA, "");
     }
 
     if (rand() % 5 == 0) {
@@ -620,16 +651,10 @@ static void init(void) {
     // Show the Window on the watch, with animated=true
     window_stack_push(s_window, true);
 
-    app_message_register_inbox_received(inbox_received_callback);
-    app_message_register_inbox_dropped(inbox_dropped_callback);
-    app_message_register_outbox_failed(outbox_failed_callback);
-    app_message_register_outbox_sent(outbox_sent_callback);
-
-    // Open AppMessage
-    app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+    mq_init(inbox_received_callback);
 
     // Initial request
-    send_watchface_request(MASK_WATCHFACE_REQUEST_ALL);
+    mq_add(CMD_OUT_GET_DATA, "");
 }
 
 static void deinit(void) {
