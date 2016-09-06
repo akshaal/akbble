@@ -208,6 +208,13 @@
                 "type": "font",
                 "name": "FONT_34",
                 "file": "fonts/font.ttf"
+            },
+
+            {
+                "characterRegex": "[0-9]",
+                "type": "font",
+                "name": "FONT_54",
+                "file": "fonts/font.ttf"
             }
         ]
     }

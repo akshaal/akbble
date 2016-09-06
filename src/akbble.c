@@ -73,6 +73,7 @@ static TextLayer *s_time_details_layer_bg = NULL;
 static TextLayer *s_time_details_layer = NULL;
 static TextLayer *s_day_layer_bg = NULL;
 static TextLayer *s_day_layer = NULL;
+static TextLayer *s_steps_layer = NULL;
 static TextLayer *s_temp_layer_bg = NULL;
 static TextLayer *s_temp_layer = NULL;
 static Layer *s_battery_layer = NULL;
@@ -92,6 +93,7 @@ static bool s_animation_running = false;
 static int s_animation_mode;
 static bool s_alarm_faraway = 0;
 static GFont s_font30;
+static GFont s_font54;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -113,6 +115,9 @@ static void display_time(struct tm *tick_time) {
 
     snprintf(day_text, 9, "%u %s%u", tick_time->tm_mday, month_names[tick_time->tm_mon], tick_time->tm_mon + 1);
     text_layer_set_text(s_day_layer, day_text);
+
+    // TODO: Not here
+    text_layer_set_text(s_steps_layer, "66666");
 }
 
 static void battery_handler(BatteryChargeState new_state) {
@@ -446,10 +451,14 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     }
 }
 
+static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
+}
+
 static void window_load(Window *window) {
     window_set_background_color(window, GColorBlack);
 
     s_font30 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_34));
+    s_font54 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_54));
 
     s_ingress_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
     s_resist_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_RESIST);
@@ -495,6 +504,14 @@ static void window_load(Window *window) {
     text_layer_set_font(s_day_layer, s_font30);
     text_layer_set_text_alignment(s_day_layer, GTextAlignmentCenter);
     layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_day_layer));
+
+    // Create steps TextLayer
+    s_steps_layer = text_layer_create(GRect(0, 67-4, 144, 34*2+4));
+    text_layer_set_background_color(s_steps_layer, GColorClear);
+    text_layer_set_text_color(s_steps_layer, GColorWhite);
+    text_layer_set_font(s_steps_layer, s_font54);
+    text_layer_set_text_alignment(s_steps_layer, GTextAlignmentCenter);
+    layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_steps_layer));
 
     // Create temp details TextLayer
     s_temp_layer_bg = text_layer_create(GRect(0, 135, 40, 33));
@@ -556,6 +573,9 @@ static void window_load(Window *window) {
     // Show current connection state
     bt_handler(bluetooth_connection_service_peek());
 
+    // Subscribe to taps
+    accel_tap_service_subscribe(accel_tap_handler);
+
     // Animate everything
     if (rand() % 3 == 0) {
         start_animation();
@@ -573,6 +593,7 @@ static void window_unload(Window *window) {
     tick_timer_service_unsubscribe();
     battery_state_service_unsubscribe();
     bluetooth_connection_service_unsubscribe();
+    accel_tap_service_unsubscribe();
 
     // Destroy bitmaps
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -616,6 +637,7 @@ static void window_unload(Window *window) {
 
     text_layer_destroy(s_time_details_layer);
     text_layer_destroy(s_time_details_layer_bg);
+    text_layer_destroy(s_steps_layer);
     text_layer_destroy(s_day_layer);
     text_layer_destroy(s_day_layer_bg);
     text_layer_destroy(s_alarm_layer);
@@ -637,6 +659,7 @@ static void window_unload(Window *window) {
     }
 
     fonts_unload_custom_font(s_font30);
+    fonts_unload_custom_font(s_font54);
 
     s_weather_layer = NULL;
     s_temp_layer = NULL;
