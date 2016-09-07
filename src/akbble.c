@@ -94,30 +94,52 @@ static int s_animation_mode;
 static bool s_alarm_faraway = 0;
 static GFont s_font30;
 static GFont s_font54;
+static bool s_default_mode = false;
+static int s_default_mode_countdown = 2;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
     bitmap_layer_set_bitmap(s_image_layers[slot_number], bitmap);
 }
 
-static void display_time(struct tm *tick_time) {
-    static char week_text[] = "W00";
-    static char time_details_text[] = "                  ";
-    static char day_text[] = "                  ";
-
+static void display_time_or_steps(struct tm *tick_time) {
     set_digit_into_slot(0, s_b_images[tick_time->tm_hour % 12]);
     set_digit_into_slot(1, s_d_images[tick_time->tm_min / 10]);
     set_digit_into_slot(2, s_d_images[tick_time->tm_min % 10]);
 
-    strftime(week_text, sizeof(week_text), "u%V", tick_time);
-    snprintf(time_details_text, 9, "%s %s", day_names[tick_time->tm_wday], week_text);
-    text_layer_set_text(s_time_details_layer, time_details_text);
+    if (s_default_mode) {
+        static char steps_text[] = "       ";
 
-    snprintf(day_text, 9, "%u %s%u", tick_time->tm_mday, month_names[tick_time->tm_mon], tick_time->tm_mon + 1);
-    text_layer_set_text(s_day_layer, day_text);
+        text_layer_set_text(s_day_layer, "");
+        text_layer_set_text(s_time_details_layer, "");
 
-    // TODO: Not here
-    text_layer_set_text(s_steps_layer, "66666");
+        HealthMetric metric = HealthMetricStepCount;
+        time_t start = time_start_of_today();
+        time_t end = time(NULL);
+
+        HealthServiceAccessibilityMask mask = health_service_metric_accessible(metric, start, end);
+
+        if (mask & HealthServiceAccessibilityMaskAvailable) {
+            snprintf(steps_text, 6, "%d", (int)health_service_sum_today(metric));
+            text_layer_set_text(s_steps_layer, steps_text);
+        } else {
+            text_layer_set_text(s_steps_layer, "");
+        }
+
+    } else {
+        static char week_text[] = "W00";
+        static char time_details_text[] = "                  ";
+        static char day_text[] = "                  ";
+
+        text_layer_set_text(s_steps_layer, "");
+
+        strftime(week_text, sizeof(week_text), "u%V", tick_time);
+        snprintf(time_details_text, 9, "%s %s", day_names[tick_time->tm_wday], week_text);
+        text_layer_set_text(s_time_details_layer, time_details_text);
+
+        snprintf(day_text, 9, "%u %s%u", tick_time->tm_mday, month_names[tick_time->tm_mon], tick_time->tm_mon + 1);
+        text_layer_set_text(s_day_layer, day_text);
+    }
 }
 
 static void battery_handler(BatteryChargeState new_state) {
@@ -421,8 +443,37 @@ static void start_animation() {
     animation_schedule(animation);
 }
 
+static void show_default_mode() {
+    s_default_mode = true;
+    s_default_mode_countdown = 0;
+}
+
+static void show_alt_mode() {
+    s_default_mode = false;
+    s_default_mode_countdown = 2;
+}
+
+static void toggle_alt_mode() {
+    if (s_default_mode) {
+        show_alt_mode();
+    } else {
+        show_default_mode();
+    }
+
+    time_t now = time(NULL);
+    struct tm *tick_time = localtime(&now);
+    display_time_or_steps(tick_time);
+}
+
 static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
-    display_time(tick_time);
+    if (!s_default_mode && s_default_mode_countdown) {
+        s_default_mode_countdown -= 1;
+        if (!s_default_mode_countdown) {
+            show_default_mode();
+        }
+    }
+
+    display_time_or_steps(tick_time);
 
     time_t cur_time = time(NULL);
 
@@ -452,6 +503,7 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
+    toggle_alt_mode();
 }
 
 static void window_load(Window *window) {
@@ -551,7 +603,7 @@ static void window_load(Window *window) {
     // Display current time
     time_t now = time(NULL);
     struct tm *tick_time = localtime(&now);
-    display_time(tick_time);
+    display_time_or_steps(tick_time);
 
     // Display some temp
     update_alarm("", false);
@@ -580,6 +632,9 @@ static void window_load(Window *window) {
     if (rand() % 3 == 0) {
         start_animation();
     }
+
+    // Prepare alt mode
+    show_default_mode();
 
     // This is important that this stuff is located HERE
     mq_init(inbox_received_callback);

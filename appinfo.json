@@ -12,6 +12,7 @@
     "appKeys": {
     },
     "capabilities": [
+        "health"
     ],
     "resources": {
         "media": [
