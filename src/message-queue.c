@@ -41,7 +41,11 @@ void mq_init(MessageHandler handler) {
 
     message_handler = handler;
 
-    app_message_open(512, 768);
+    // It's important to use some OK amount to avoid
+    // using too much memory....
+    app_message_open(2048, 2048);
+
+
     app_message_register_outbox_sent(outbox_sent_callback);
     app_message_register_outbox_failed(outbox_failed_callback);
     app_message_register_inbox_received(inbox_received_callback);
@@ -103,8 +107,6 @@ static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResul
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "On MQ-receive");
-
     uint32_t uuid = 0;
     Tuple* uuid_tuple = dict_find(iterator, MSG_KEY_UUID);
     if (uuid_tuple) {

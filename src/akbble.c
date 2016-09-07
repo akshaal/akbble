@@ -77,6 +77,7 @@ static TextLayer *s_steps_layer = NULL;
 static TextLayer *s_temp_layer_bg = NULL;
 static TextLayer *s_temp_layer = NULL;
 static Layer *s_battery_layer = NULL;
+static Layer *s_humidity_layer = NULL;
 static Layer *s_bt_layer = NULL;
 static BitmapLayer *s_ingress_layer1 = NULL;
 static BitmapLayer *s_ingress_layer2 = NULL;
@@ -86,6 +87,7 @@ static BatteryChargeState s_battery_state;
 static bool s_bt_connected;
 static int s_temp = 99;
 static int s_weather_icon = 4;
+static int s_weather_hum = 0;
 static time_t s_last_temp_update_secs = 0;
 static time_t s_last_anim_secs = 0;
 static time_t s_alarm_secs = 0;
@@ -96,6 +98,8 @@ static GFont s_font30;
 static GFont s_font54;
 static bool s_default_mode = false;
 static int s_default_mode_countdown = 2;
+static AppTimer *s_bck_light_window_unset_timer = NULL;
+static bool s_bck_already_on = false;
 
 // ------------------------------------------------------
 static void set_digit_into_slot(int slot_number, GBitmap *bitmap) {
@@ -161,6 +165,24 @@ static void paint_battery_layer(Layer *layer, GContext *ctx) {
     graphics_context_set_stroke_width(ctx, 6);
     graphics_draw_line(ctx, p0, p1);
     graphics_context_set_stroke_color(ctx, GColorBlack);
+    graphics_draw_line(ctx, p1, p2);
+}
+
+static void paint_humidity_layer(Layer *layer, GContext *ctx) {
+    int y = (s_weather_hum * 168) / 100;
+    if (y < 0) {
+        y = 0;
+    }
+    if (y > 168) {
+        y = 168;
+    }
+
+    y = 168 - y;
+
+    GPoint p1 = GPoint(0, y);
+    GPoint p2 = GPoint(0, 168);
+    graphics_context_set_stroke_width(ctx, 6);
+    graphics_context_set_stroke_color(ctx, GColorVividCerulean);
     graphics_draw_line(ctx, p1, p2);
 }
 
@@ -265,7 +287,7 @@ static void inbox_received_callback(DictionaryIterator *iterator) {
                 break;
 
             case CMD_IN_GET_DATA_RESPONSE_WEATHER_HUM:
-                //msg_weather_hum = t->value->int8;  TODO!!!!!!!!!!!!!!!!!!!!!!!!!
+                msg_weather_hum = t->value->int8;
                 break;
 
             case CMD_IN_GET_DATA_RESPONSE_WEATHER_WIND:
@@ -289,6 +311,7 @@ static void inbox_received_callback(DictionaryIterator *iterator) {
         case CMD_IN_GET_DATA_RESPONSE:
             s_temp = msg_weather_temp;
             s_weather_icon = msg_weather_icon;
+            s_weather_hum = msg_weather_hum;
 
             if (msg_alarm_mins < 0) {
                 msg_alarm_mins = 0;
@@ -299,6 +322,7 @@ static void inbox_received_callback(DictionaryIterator *iterator) {
             update_temp();
             update_weather_icon();
             update_alarm_time();
+            layer_mark_dirty(window_get_root_layer(s_window));
             break;
 
         default:
@@ -502,8 +526,23 @@ static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed) {
     }
 }
 
+static void bck_light_window_unset(void *context) {
+    s_bck_already_on = false;
+    s_bck_light_window_unset_timer = NULL;
+}
+
 static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
-    toggle_alt_mode();
+    if (s_bck_already_on) {
+        toggle_alt_mode();
+    };
+
+    s_bck_already_on = true;
+
+    if (s_bck_light_window_unset_timer) {
+        app_timer_reschedule(s_bck_light_window_unset_timer, 4000);
+    } else {
+        s_bck_light_window_unset_timer = app_timer_register(4000, bck_light_window_unset, NULL);
+    }
 }
 
 static void window_load(Window *window) {
@@ -594,6 +633,11 @@ static void window_load(Window *window) {
     s_battery_layer = layer_create(GRect(0, 67, 144, 4));
     layer_set_update_proc(s_battery_layer, paint_battery_layer);
     layer_add_child(window_get_root_layer(window), s_battery_layer);
+
+    // Create humidity layer THIS SHOULD BE AFTER OTHER TEXTS
+    s_humidity_layer = layer_create(GRect(140, 0, 4, 168));
+    layer_set_update_proc(s_humidity_layer, paint_humidity_layer);
+    layer_add_child(window_get_root_layer(window), s_humidity_layer);
 
     // Create bt layer: THIS SHOULD BE THE LAST LAYER
     s_bt_layer = layer_create(GRect(0, 0, 144, 168));
@@ -700,6 +744,7 @@ static void window_unload(Window *window) {
     text_layer_destroy(s_temp_layer);
     text_layer_destroy(s_temp_layer_bg);
     layer_destroy(s_battery_layer);
+    layer_destroy(s_humidity_layer);
     layer_destroy(s_bt_layer);
     bitmap_layer_destroy(s_weather_layer);
 
