@@ -43,7 +43,7 @@ void mq_init(MessageHandler handler) {
 
     // It's important to use some OK amount to avoid
     // using too much memory....
-    app_message_open(2048, 2048);
+    app_message_open(512, 768);
 
 
     app_message_register_outbox_sent(outbox_sent_callback);

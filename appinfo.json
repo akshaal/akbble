@@ -205,7 +205,7 @@
             },
 
             {
-                "characterRegex": "[A-Za-z0-9 øåæØÆÅ]",
+                "characterRegex": "[uA-Z0-9 ØÆÅ]",
                 "type": "font",
                 "name": "FONT_34",
                 "file": "fonts/font.ttf"
