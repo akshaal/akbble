@@ -62,9 +62,6 @@ static GBitmap *s_d_images[NUMBER_OF_IMAGES];
 static GBitmap *s_b_images[NUMBER_OF_IMAGES];
 static GBitmap *s_weather_images[NUMBER_OF_WEATHER_ICONS];
 static GBitmap *s_anim_image = NULL;
-static GBitmap *s_ingress_image = NULL;
-static GBitmap *s_resist_image = NULL;
-static GBitmap *s_noise_image = NULL;
 static GBitmap *s_ingress_slice_image1 = NULL;
 static GBitmap *s_ingress_slice_image2 = NULL;
 static BitmapLayer *s_image_layers[TOTAL_IMAGE_SLOTS];
@@ -340,6 +337,7 @@ static void my_animation_started(Animation *animation, void *context) {
             bitmap_layer_destroy(s_ingress_layer1);
             s_ingress_layer1 = NULL;
         }
+
         if (s_ingress_layer2) {
             bitmap_layer_destroy(s_ingress_layer2);
             s_ingress_layer2 = NULL;
@@ -430,7 +428,13 @@ static void my_animation_stopped(Animation *animation, bool finished, void *cont
         bitmap_layer_destroy(s_ingress_layer2);
         s_ingress_layer2 = NULL;
     }
+
     animation_destroy(animation);
+
+    if (s_anim_image) {
+        gbitmap_destroy(s_anim_image);
+        s_anim_image = NULL;
+    }
 }
 
 static void start_animation() {
@@ -444,7 +448,14 @@ static void start_animation() {
     s_animation_mode = rand() % 3 + 1;
 
     int imgi = rand() % 3;
-    s_anim_image = imgi == 0 ? s_resist_image : (imgi == 1 ? s_ingress_image : s_noise_image);
+
+    if (imgi == 0) {
+        s_anim_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
+    } else if (imgi == 1) {
+        s_anim_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_RESIST);
+    } else {
+        s_anim_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NOISE);
+    }
 
     // Animation itself
     Animation *animation = animation_create();
@@ -550,10 +561,6 @@ static void window_load(Window *window) {
 
     s_font30 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_34));
     s_font54 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_54));
-
-    s_ingress_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_INGRESS);
-    s_resist_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_RESIST);
-    s_noise_image = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_NOISE);
 
     // 48x67
     for (int i = 0; i < NUMBER_OF_IMAGES; i++) {
@@ -711,21 +718,6 @@ static void window_unload(Window *window) {
     if (s_ingress_slice_image2) {
         gbitmap_destroy(s_ingress_slice_image2);
         s_ingress_slice_image2 = NULL;
-    }
-
-    if (s_ingress_image) {
-        gbitmap_destroy(s_ingress_image);
-        s_ingress_image = NULL;
-    }
-
-    if (s_resist_image) {
-        gbitmap_destroy(s_resist_image);
-        s_resist_image = NULL;
-    }
-
-    if (s_noise_image) {
-        gbitmap_destroy(s_noise_image);
-        s_noise_image = NULL;
     }
 
     // Destroy layers
